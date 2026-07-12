@@ -1,0 +1,1 @@
+Testing representational convergence (Platonic Representation Hypothesis) on attention patterns across the Pythia model family. The purpose of the research is measuring the agreement between attention patterns of different large language models across scale, depth, and individual heads.
