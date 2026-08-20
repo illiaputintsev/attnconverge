@@ -31,3 +31,25 @@ Best match reaches 0.824 at the first layer pair and 0.809 at the second, gaps o
 At depth 0.8 the comparison involves two heads against three, and at depth 1.0 five against three, so the collapse cannot be attributed to the models rather than the filter on this evidence.
 
 Keeping column 0 raised every figure. At depth 0.6 the masked comparison gave 0.690 and the unmasked 0.860. Both models placed most of their late weight on the first token, so the unmasked figures included agreement that reflects the sink rather than anything either model learned.
+
+## E4. Filter sensitivity and layer alignment, 70m against 160m
+
+The matching from E3 was repeated at four sink cutoffs: 0.7, 0.8, 0.9, and 1.0 which keeps every head. Every layer of 70m was then compared against every layer of 160m, and a within-model baseline was computed by comparing 70m heads against other 70m heads.
+
+With no filter, where all eight heads are used at every depth, the gap runs +0.498, +0.484, +0.366, +0.237, −0.038, +0.099. The same shape appears at all four cutoffs, so the collapse E3 found on two heads is not a product of the filter.
+
+Best match is identical at 0.824 in the first layer pair across all four cutoffs, while the mean baseline moves from 0.506 at cutoff 0.7 to 0.319 with no filter. Filtering therefore lowers the baseline rather than the signal, since sink-heavy heads resemble each other and admitting them to the random pool raises the floor.
+
+Relative depth was correct for 3 of 6 layers. L0, L1 and L3 matched where predicted, L2 was off by one, and L4 and L5 matched L7 and L3 where relative depth predicted L9 and L11. Both scored 0.464 against a floor near 0.44, so neither matched anything well anywhere in the larger model. The six layers of 70m mapped onto four distinct layers of 160m, with L3 and L4 both matching L7.
+
+Two random heads from 70m scored 0.459 against each other, and a random 70m head against a random 160m head scored 0.438, a difference of −0.020.
+
+## E1-E4. Conclusions
+
+Heads in one model have counterparts in the other in the early layers and not in the late ones. The gap reaches +0.325 at the first layer pair and turns negative in the final third, and the same shape appears at every sink cutoff including none.
+
+Two random heads agree to roughly 0.44 whether they come from the same model or different ones, which is why the figures are reported as gaps over that floor.
+
+Relative depth pairs the layers correctly for the first two thirds of the stack. The last two layers of 70m score 0.464 against a floor near 0.44, wherever they are compared.
+
+These results come from one pair of models trained on the same data by the same organisation, so the next step would be to test whether they hold across sizes and across models trained independently. Adding further Pythia sizes tests whether agreement grows with scale, as Platonic Representation Hypothesis claims for representations. 
