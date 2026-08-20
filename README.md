@@ -8,6 +8,10 @@ Hidden states live in each model's own coordinate system. Pythia-70m uses 512 di
 
 Attention is different, since every head produces an n × n matrix whose rows and columns are indexed by the tokens of the sentence. Feeding the same sentence to two models with the same tokeniser produces matrices of the same shape with the same meaning per cell.
 
+![pythia-70m layer 0 head 3 and pythia-160m layer 0 head 7, the best-matching pair in the first layer, cosine 0.963 over fifty sentences](results/matched_pair.png)
+
+Both are previous-token heads, at different head indices in the two models.
+
 ## Method
 
 Every head in one model is compared against every head in the other by cosine similarity over their attention matrices, averaged across a fixed set of fifty sentences, keeping the best match for each head. Head numbering follows from initialisation and means nothing across models, so the comparison runs all against all rather than by index. Layers are paired by relative depth.
