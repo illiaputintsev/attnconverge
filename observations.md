@@ -53,3 +53,14 @@ Two random heads agree to roughly 0.44 whether they come from the same model or 
 Relative depth pairs the layers correctly for the first two thirds of the stack. The last two layers of 70m score 0.464 against a floor near 0.44, wherever they are compared.
 
 These results come from one pair of models trained on the same data by the same organisation, so the next step would be to test whether they hold across sizes and across models trained independently. Adding further Pythia sizes tests whether agreement grows with scale, as Platonic Representation Hypothesis claims for representations. 
+
+## E5. Agreement across four Pythia sizes
+
+Every pair of models was compared head by head, as in E3, and the gap over the random-pair baseline recorded at each relative depth. Concluded on 6 pairs in total, from 70m to 1b at a 0.9 sink cutoff.
+
+As a result, 70m and 160m are 2.3x apart and reach +0.401 in the first two layer pairs. 410m and 1b are 2.4x apart, about six times larger, and reach +0.331. The two pairs are roughly the same distance apart in size, so absolute parameter count has no measurable effect on cross-model agreement.
+
+The correlation between size ratio and early gap is −0.836 across the six pairs, and the pair furthest apart in size is the lowest at +0.260, so within this range the spread comes from the distance between two models in size, and how large they are makes no difference.
+
+Where relative depth failed, the best match was almost always at a shallower layer than predicted: correct for 3 of 6 layers between 70m and 160m, and 1 of 6 for both pairs putting 70m against a model above 400m.
+
