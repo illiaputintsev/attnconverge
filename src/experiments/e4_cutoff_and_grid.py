@@ -16,6 +16,7 @@ from src.attnlib.extract import load_sentences, get_data
 from src.attnlib.metrics import sink_fraction, relative_depth_pairs
 from src.attnlib.matching import (best_match, random_baseline, live_heads,
                                   head_similarity)
+from matplotlib.lines import Line2D
 
 MODELS = ["EleutherAI/pythia-70m", "EleutherAI/pythia-160m"]
 SENTENCES_PATH = "data/sentences.txt"
@@ -144,8 +145,7 @@ def main():
     ax.axhline(0, color=style.MUTED, lw=1, ls="--")
     ax.set_xlabel("relative depth")
     ax.set_ylabel("gap over random baseline")
-    style.titled(ax, "Gap over baseline at four sink cutoffs",
-                 "the shape holds at every setting, including none")
+    ax.set_title("Gap over baseline at four sink cutoffs", loc="left", pad=12)
     ax.legend(title="sink filter")
 
     ax = axes[1]
@@ -155,18 +155,29 @@ def main():
     ax.set_xticks(range(LB))
     ax.set_yticks(range(LA))
     ax.grid(False)
+
     for layer_a in range(LA):
         ax.plot(predicted[layer_a], layer_a, marker="s", ms=9,
                 mfc="none", mec="white", mew=1.6)
         ax.plot(int(argmax[layer_a]), layer_a, marker="o", ms=5, color="red")
+
     fig.colorbar(im, ax=ax, label="best-match similarity")
-    style.titled(ax, "Every layer against every layer",
-                 "white square = relative depth, red dot = actual best match")
+
+    handles = [
+        Line2D([], [], marker="s", ms=8, mfc="none", mec="#666", mew=1.4,
+               ls="none", label="predicted"),
+        Line2D([], [], marker="o", ms=5, color="red", ls="none",
+               label="measured"),
+    ]
+    ax.legend(handles=handles, loc="lower left", bbox_to_anchor=(0, 0.995),
+              ncol=2, fontsize=8, frameon=False)
+
+    ax.set_title("Every layer against every layer", loc="left", pad=24)
 
     plt.tight_layout()
     plt.savefig(f"{OUT}/e4_cutoff_and_grid.png", dpi=150)
     plt.close()
-
+    
     fig, ax = plt.subplots(figsize=(7, 4.2))
     for i, cutoff in enumerate(CUTOFFS):
         rows = sweep[cutoff]
