@@ -1,5 +1,6 @@
 .venv/
-results/
+results/attention_cache/
+results/*.pkl
 __pycache__/
 *.pyc
 .DS_Store
