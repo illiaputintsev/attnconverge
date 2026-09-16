@@ -1,8 +1,13 @@
 """E7: Size mismatch across model families
 
 Tests whether size mismatch is associated with a larger early-to-late
-decline in attention agreement. GPT-2, GPT-2-medium, GPT-Neo-125M and
-OPT-125M give three pairs of similar size and three pairs 2.8-2.9x apart.
+decline in attention agreement. GPT-2, GPT-2-medium, GPT-Neo-125M,
+OPT-125M and two Stanford CRFM GPT-2 reproductions give fifteen pairs
+across four organisations, ten of similar size and five 2.8-2.9x apart.
+Every unequal-sized pair involves GPT-2-medium, so that split compares
+one model against the rest rather than size mismatch as such.
+The two CRFM models differ only in random seed, so their pair is a
+same-recipe reference for how much agreement seed variation alone leaves.
 """
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -19,13 +24,19 @@ MODELS = [
     "gpt2-medium",               # OpenAI, WebText, 355M
     "EleutherAI/gpt-neo-125m",   # EleutherAI, The Pile, 125M
     "facebook/opt-125m",         # Meta, mixed corpus, 125M
+    "stanford-crfm/alias-gpt2-small-x21",       # Stanford CRFM, OpenWebText, 124M, seed 21
+    "stanford-crfm/battlestar-gpt2-small-x49",  # Stanford CRFM, OpenWebText, 124M, seed 49
 ]
 
 SIZES = {"gpt2": 124, "gpt2-medium": 355,
-         "gpt-neo-125m": 125, "opt-125m": 125}
+         "gpt-neo-125m": 125, "opt-125m": 125,
+         "alias-gpt2-small-x21": 124,
+         "battlestar-gpt2-small-x49": 124}
 
 ORG = {"gpt2": "OpenAI", "gpt2-medium": "OpenAI",
-       "gpt-neo-125m": "EleutherAI", "opt-125m": "Meta"}
+       "gpt-neo-125m": "EleutherAI", "opt-125m": "Meta",
+       "alias-gpt2-small-x21": "Stanford CRFM",
+       "battlestar-gpt2-small-x49": "Stanford CRFM"}
 
 SENTENCES_PATH = "data/sentences.txt"
 OUT = "results"
@@ -35,7 +46,9 @@ SINK_CUTOFF = 0.9
 N_RANDOM = 150
 SEED = 0
 
-COLOURS = ["#c4453a", "#1d9e75", "#d8722c", "#7f77dd", "#2b6cb0", "#8a8578"]
+COLOURS = ["#c4453a", "#1d9e75", "#d8722c", "#7f77dd", "#2b6cb0", "#8a8578",
+           "#2f8f9d", "#b5539c", "#7a8b2e", "#8a5a3c", "#4a6fa5", "#c97c9c",
+           "#5d7d4b", "#a8642a", "#6e5aa0"]
 
 
 def load_sentences(path):
@@ -84,9 +97,13 @@ def extract(name, sentences):
 
 def get_data(sentences):
     if os.path.exists(CACHE):
-        print(f"loading cached attention from {CACHE}")
         with open(CACHE, "rb") as f:
-            return pickle.load(f)
+            cached = pickle.load(f)
+        if all(m in cached for m in MODELS):
+            print(f"loading cached attention from {CACHE}")
+            return cached
+        missing = [m for m in MODELS if m not in cached]
+        print(f"cache at {CACHE} predates {', '.join(missing)}; re-extracting")
     print("extracting attention (first run)")
     data = {name: extract(name, sentences) for name in MODELS}
     os.makedirs(OUT, exist_ok=True)
@@ -196,6 +213,97 @@ def compare(nameA, nameB, data, sinks):
             "decay": early - late, "mean": float(np.mean(gaps))}
 
 
+LABEL = {"gpt2": "GPT-2", "gpt2-medium": "GPT-2 medium", "gpt-neo-125m": "GPT-Neo",
+         "opt-125m": "OPT", "alias-gpt2-small-x21": "CRFM x21",
+         "battlestar-gpt2-small-x49": "CRFM x49"}
+
+
+def pair_label(r):
+    return f"{LABEL.get(r['shortA'], r['shortA'])} / {LABEL.get(r['shortB'], r['shortB'])}"
+
+
+def plot_ranked(path, results):
+    """Every pair ranked by late gap, with the early-to-late decay as a span."""
+    from src.attnlib import style
+    style.apply()
+    rows = sorted(results.values(), key=lambda r: r["late"])
+    same, diff = style.SERIES[0], style.SERIES[1]
+
+    fig, ax = plt.subplots(figsize=(9.2, 6.4))
+    for i, r in enumerate(rows):
+        colour = same if r["same_org"] else diff
+        ax.plot([r["late"], r["early"]], [i, i], color=style.GRID, lw=2.4,
+                solid_capstyle="round", zorder=2)
+        ax.scatter(r["early"], i, s=44, facecolor=style.PAPER, edgecolor=colour,
+                   linewidth=1.6, zorder=3)
+        ax.scatter(r["late"], i, s=54, color=colour, edgecolor=style.PAPER,
+                   linewidth=1.2, zorder=4)
+
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels([pair_label(r) for r in rows])
+    ax.set_ylim(-0.8, len(rows) - 0.2)
+    ax.set_xlabel("gap over the random-pair baseline")
+    ax.xaxis.grid(True)
+    ax.yaxis.grid(False)
+    ax.set_axisbelow(True)
+    ax.margins(x=0.10)
+
+    handles = [plt.Line2D([], [], marker="o", ls="", color=same, label="same organisation"),
+               plt.Line2D([], [], marker="o", ls="", color=diff, label="different organisations")]
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.085),
+              ncol=2, handletextpad=0.5, columnspacing=2.2)
+    style.titled(ax, "Every pair keeps a positive gap at both depths",
+                 "hollow = early layers, filled = late; fifty sentences at a 0.9 sink cutoff")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_depth_profiles(path, results):
+    """One small panel per pair, each against the other fourteen in grey."""
+    from src.attnlib import style
+    style.apply()
+    rows = sorted(results.values(), key=lambda r: -r["late"])
+    curves = [([x["depth"] for x in r["rows"]],
+               [x["best"] - x["rand"] for x in r["rows"]]) for r in rows]
+    flat = [g for _, gs in curves for g in gs if not np.isnan(g)]
+    lo, hi = min(flat), max(flat)
+    pad = (hi - lo) * 0.10
+
+    ncol = 5
+    nrow = -(-len(rows) // ncol)
+    fig, axes = plt.subplots(nrow, ncol, figsize=(14, 2.5 * nrow + 1),
+                             sharex=True, sharey=True)
+    for k, ax in enumerate(axes.flat):
+        if k >= len(rows):
+            ax.set_visible(False)
+            continue
+        for d, g in curves:
+            ax.plot(d, g, color=style.GRID, lw=1.1, zorder=1)
+        r = rows[k]
+        colour = style.SERIES[0] if r["same_org"] else style.SERIES[1]
+        ax.plot(*curves[k], color=colour, lw=2.0, marker="o", ms=3.4,
+                markeredgecolor=style.PAPER, markeredgewidth=0.7, zorder=3)
+        ax.axhline(0, color=style.MUTED, lw=0.9, ls=":", zorder=2)
+        ax.set_title(pair_label(r), fontsize=9.5, loc="left", pad=6)
+        ax.text(0.97, 0.93, f"late {r['late']:+.3f}", transform=ax.transAxes,
+                ha="right", va="top", fontsize=8.2, color=style.MUTED)
+        ax.set_ylim(lo - pad, hi + pad)
+        ax.set_axisbelow(True)
+        if k % ncol == 0:
+            ax.set_ylabel("gap over random")
+        if k >= len(rows) - ncol:
+            ax.set_xlabel("relative depth")
+
+    fig.suptitle("Depth profile of every pair, each shown against all fifteen",
+                 x=0.005, ha="left", fontsize=12.5, weight="medium")
+    fig.text(0.005, 0.963, "green = same organisation, orange = different; ordered by late-layer gap",
+             ha="left", va="bottom", fontsize=9, color=style.MUTED)
+    fig.tight_layout(rect=(0, 0, 1, 0.952))
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     random.seed(SEED)
@@ -260,43 +368,9 @@ def main():
     print(f"\n  mean early gap across organisations: "
           f"{np.mean([r['early'] for r in cross]):+.3f}  ({len(cross)} pairs)")
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5))
-
-    ax = axes[0]
-    for k, r in enumerate(results.values()):
-        d = [x["depth"] for x in r["rows"]]
-        g = [x["best"] - x["rand"] for x in r["rows"]]
-        style = "-" if r["ratio"] < 1.2 else "--"
-        ax.plot(d, g, marker="o", ms=4, ls=style, color=COLOURS[k % len(COLOURS)],
-                label=f"{r['shortA']} vs {r['shortB']} ({r['ratio']:.1f}x)")
-    ax.axhline(0, color="#999", lw=1, ls=":")
-    ax.set_xlabel("relative depth")
-    ax.set_ylabel("gap over random baseline")
-    ax.set_title("Solid = near-equal sizes, dashed = unequal")
-    ax.legend(fontsize=8)
-    ax.grid(alpha=0.3)
-
-    ax = axes[1]
-    xs = [r["ratio"] for r in results.values()]
-    ys = [r["decay"] for r in results.values()]
-    cs = ["#1d9e75" if r["same_org"] else "#c4453a" for r in results.values()]
-    ax.scatter(xs, ys, s=80, c=cs, zorder=3)
-    for r in results.values():
-        ax.annotate(f"{r['shortA'].replace('gpt-','').replace('-125m','')}/"
-                    f"{r['shortB'].replace('gpt-','').replace('-125m','')}",
-                    (r["ratio"], r["decay"]), fontsize=7.5,
-                    xytext=(5, 4), textcoords="offset points")
-    ax.axhline(0, color="#999", lw=1, ls=":")
-    ax.set_xlabel("size ratio between the two models")
-    ax.set_ylabel("decay from early to late layers")
-    ax.set_title("Green = same organisation, red = different")
-    ax.grid(alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig(f"{OUT}/e7_families.png", dpi=150)
-    plt.close()
-
-    print(f"\nsaved plot to {OUT}/e7_families.png")
+    plot_ranked(f"{OUT}/e7_families.png", results)
+    plot_depth_profiles(f"{OUT}/e7_depth_profiles.png", results)
+    print(f"\nsaved plots to {OUT}/e7_families.png and {OUT}/e7_depth_profiles.png")
 
 
 if __name__ == "__main__":
