@@ -111,3 +111,15 @@ Late excess CKA runs +0.192 to +0.460 across the 45 pairs. The same-family and c
 Across the 21 comparable pairs, late attention gap and late aligned excess CKA correlate at +0.055. GPT-2 against CRFM x21 has the second-highest late attention gap at +0.214 and one of the lowest aligned excess CKA values at +0.202. GPT-2 against GPT-2-medium reverses both, at +0.160 and +0.386. Representational similarity therefore does not predict attention similarity in this set. Wu et al. (2020) reported the same separation between the two signals. The 21 pairs are few and share models; the correlation describes them and does not isolate a relationship between the two signals.
 
 Late input excess and late aligned excess CKA correlate at −0.262 over the same pairs. What information the matched heads follow remains untested.
+
+## E10. Attention correspondence across tokenisers
+
+Each passage was divided into 16 spans on boundaries shared by all ten models, and attention was measured from the final token of each span, with key weights summed within spans. Head matches, random targets and sink exclusions were fixed on the selection set and evaluated on ordinary and repeated passages, as in E8. The span basis removes the requirement for identical token boundaries, and all 45 pairs were scored on 95 evaluation passages.
+
+Every pair retains a positive late gap over random heads, from +0.097 to +0.211, and higher matched similarity on the same text than on different texts, by +0.093 to +0.300. Twenty-four of the pairs cross the two tokenisers, each setting a Pythia model against one on the GPT-2 vocabulary, and their late gaps run +0.119 to +0.166, inside the range of the pairs E8 could score.
+
+The depth profile reverses under span aggregation. Twenty-nine of the 45 pairs have a higher late than early gap, against two of 21 in E8, and early gaps run +0.079 to +0.200. Summing key weights within spans discards routing inside a span, where much of the early correspondence sits. The two experiments therefore measure different quantities and their depth profiles should not be read against each other.
+
+The seed-only pair is highest at both depths, +0.200 early and +0.211 late, and has the largest same-minus-different difference at +0.300. Late gap correlates at +0.221 with log smaller-model size, −0.229 with log size ratio and +0.322 with mean excluded-head share, against +0.401, −0.347 and +0.212 over E8's 21 pairs and +0.700, −0.086 and +0.453 over the original eight-model panel's twelve. None of the three is stable to which pairs are scored. Per-model late means range from +0.132 to +0.159, over nine partners each.
+
+Every late gap stays positive at sink cutoffs 0.7 and 1.0, although OPT against CRFM x49 falls to +0.006 at 0.7. Repeating each passage's first eight-token prefix lowers the late gap in 44 of the 45 pairs, by up to 0.076; Pythia-1b against GPT-Neo rises by 0.011.
